@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+import customtkinter as ctk
 import threading
 import time
 import json
@@ -12,6 +12,10 @@ import win32api
 import win32gui
 import win32process
 import psutil
+
+# ================= 现代化 UI 全局设置 =================
+ctk.set_appearance_mode("System")  # 跟随系统主题 (深色/浅色)
+ctk.set_default_color_theme("blue") # 默认强调色
 
 # ================= 核心监控逻辑 =================
 
@@ -51,13 +55,13 @@ def set_autostart(enable=True):
         print(f"设置开机自启失败: {e}")
         return False
 
-# ================= UI 与主程序 =================
+# ================= 现代化 UI 与主程序 =================
 
 class AgentApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Not-Dead-Yet Agent")
-        self.root.geometry("380x350")
+        self.root.geometry("450x420")
         self.root.resizable(False, False)
 
         self.running = False
@@ -67,34 +71,48 @@ class AgentApp:
         self.setup_ui()
 
     def setup_ui(self):
-        padding = {'padx': 10, 'pady': 5}
+        # 顶部标题栏
+        self.title_label = ctk.CTkLabel(self.root, text="👀 Not-Dead-Yet 监控探针", font=ctk.CTkFont(size=20, weight="bold"))
+        self.title_label.grid(row=0, column=0, columnspan=2, pady=(20, 20))
 
-        # 1. Broker 地址 (此处前端填 wss，后端探针这里我们直接用 TCP 域名)
-        tk.Label(self.root, text="MQTT Broker (域名):").grid(row=0, column=0, sticky="w", **padding)
+        # 1. Broker 地址
+        ctk.CTkLabel(self.root, text="MQTT Broker (域名):", font=ctk.CTkFont(size=13)).grid(row=1, column=0, sticky="w", padx=30, pady=(5, 0))
         self.broker_var = tk.StringVar(value="broker.emqx.io") 
-        tk.Entry(self.root, textvariable=self.broker_var, width=30).grid(row=1, column=0, columnspan=2, **padding)
+        self.broker_entry = ctk.CTkEntry(self.root, textvariable=self.broker_var, width=350, height=35)
+        self.broker_entry.grid(row=2, column=0, columnspan=2, padx=30, pady=(0, 15))
 
         # 2. Topic 设置
-        tk.Label(self.root, text="你的专属 Topic (房间/用户名):").grid(row=2, column=0, sticky="w", **padding)
-        self.topic_var = tk.StringVar(value="NotDeadYet/TyTyLoo/Sleepy-Potato-9527")
-        tk.Entry(self.root, textvariable=self.topic_var, width=30).grid(row=3, column=0, **padding)
-        tk.Button(self.root, text="🎲", command=self.generate_topic).grid(row=3, column=1, padx=5)
+        ctk.CTkLabel(self.root, text="你的专属 Topic (房间/用户名):", font=ctk.CTkFont(size=13)).grid(row=3, column=0, sticky="w", padx=30, pady=(5, 0))
+        self.topic_var = tk.StringVar(value="NotDeadYet/TyTyLoo/CloydLarkin")
+        
+        # 将输入框和随机按钮放在一个框架里，使其对齐更好看
+        self.topic_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.topic_frame.grid(row=4, column=0, columnspan=2, padx=30, pady=(0, 15), sticky="ew")
+        self.topic_entry = ctk.CTkEntry(self.topic_frame, textvariable=self.topic_var, width=280, height=35)
+        self.topic_entry.pack(side="left", padx=(0, 10))
+        self.random_btn = ctk.CTkButton(self.topic_frame, text="🎲 随机", width=60, height=35, command=self.generate_topic)
+        self.random_btn.pack(side="left")
 
-        # 3. 发送频率
-        tk.Label(self.root, text="发送频率 (秒):").grid(row=4, column=0, sticky="w", **padding)
-        self.interval_var = tk.IntVar(value=5)
-        ttk.Combobox(self.root, textvariable=self.interval_var, values=(3, 5, 10, 30), width=10).grid(row=4, column=1, sticky="w")
+        # 3. 发送频率 & 开机自启 (放在同一行)
+        self.settings_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.settings_frame.grid(row=5, column=0, columnspan=2, padx=30, pady=(5, 15), sticky="ew")
+        
+        ctk.CTkLabel(self.settings_frame, text="发送频率:", font=ctk.CTkFont(size=13)).pack(side="left", padx=(0, 10))
+        self.interval_var = ctk.StringVar(value="5")
+        self.interval_combo = ctk.CTkComboBox(self.settings_frame, variable=self.interval_var, values=["3", "5", "10", "30"], width=80)
+        self.interval_combo.pack(side="left", padx=(0, 30))
 
-        # 4. 开机自启
-        self.autostart_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(self.root, text="开启开机自启", variable=self.autostart_var, command=self.toggle_autostart).grid(row=5, column=0, columnspan=2, sticky="w", **padding)
+        self.autostart_var = ctk.BooleanVar(value=False)
+        self.autostart_check = ctk.CTkCheckBox(self.settings_frame, text="开启开机自启", variable=self.autostart_var, command=self.toggle_autostart)
+        self.autostart_check.pack(side="left")
 
-        # 5. 控制按钮
-        self.start_btn = tk.Button(self.root, text="▶ 启动探针", bg="#10B981", fg="white", font=("Arial", 12, "bold"), command=self.toggle_running)
-        self.start_btn.grid(row=6, column=0, columnspan=2, pady=20, ipadx=50, ipady=5)
+        # 4. 控制大按钮
+        self.start_btn = ctk.CTkButton(self.root, text="▶ 启动探针", height=45, font=ctk.CTkFont(size=15, weight="bold"),
+                                       fg_color="#10B981", hover_color="#059669", command=self.toggle_running)
+        self.start_btn.grid(row=6, column=0, columnspan=2, padx=30, pady=(15, 10), sticky="ew")
 
-        # 6. 状态栏
-        self.status_label = tk.Label(self.root, text="状态: 准备就绪", fg="gray")
+        # 5. 状态栏
+        self.status_label = ctk.CTkLabel(self.root, text="状态: 准备就绪", text_color="gray", font=ctk.CTkFont(size=12))
         self.status_label.grid(row=7, column=0, columnspan=2)
 
     def generate_topic(self):
@@ -114,41 +132,50 @@ class AgentApp:
 
     def start_agent(self):
         self.running = True
-        self.start_btn.config(text="⏹ 停止探针", bg="#EF4444")
-        self.status_label.config(text="状态: 正在连接...", fg="blue")
+        self.start_btn.configure(text="⏹ 停止探针", fg_color="#EF4444", hover_color="#B91C1C")
+        self.status_label.configure(text="状态: 正在连接...", text_color="#3B82F6")
         
+        # 禁用输入框，防止运行时修改
+        self.broker_entry.configure(state="disabled")
+        self.topic_entry.configure(state="disabled")
+        self.interval_combo.configure(state="disabled")
+
         self.monitor_thread = threading.Thread(target=self.agent_loop, daemon=True)
         self.monitor_thread.start()
 
     def stop_agent(self):
         self.running = False
-        self.start_btn.config(text="▶ 启动探针", bg="#10B981")
-        self.status_label.config(text="状态: 已停止", fg="gray")
+        self.start_btn.configure(text="▶ 启动探针", fg_color="#10B981", hover_color="#059669")
+        self.status_label.configure(text="状态: 已停止", text_color="gray")
+        
+        # 恢复输入框
+        self.broker_entry.configure(state="normal")
+        self.topic_entry.configure(state="normal")
+        self.interval_combo.configure(state="normal")
+
         if self.mqtt_client:
             self.mqtt_client.disconnect()
 
     def agent_loop(self):
         broker = self.broker_var.get()
         topic = self.topic_var.get()
-        interval = self.interval_var.get()
+        interval = int(self.interval_var.get())
         
         user_id = topic.split('/')[-1]
 
         try:
-            # 修复 1：适配 paho-mqtt 2.0 版本 API
             self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
             
             # 设置遗嘱 (LWT)
             lwt_payload = json.dumps({"user": user_id, "status": "offline"})
             self.mqtt_client.will_set(topic, payload=lwt_payload, retain=True)
 
-            # 修复 2：放弃复杂的 websockets，直接走最底层、最快的 1883 TCP 端口
             self.mqtt_client.connect(broker, 1883, 60)
             self.mqtt_client.loop_start()
-            self.root.after(0, lambda: self.status_label.config(text="状态: 运行中 🟢 (TCP协议)", fg="green"))
+            self.root.after(0, lambda: self.status_label.configure(text="状态: 运行中 🟢 (TCP协议)", text_color="#10B981"))
         except Exception as e:
-            self.root.after(0, lambda: self.status_label.config(text=f"连接失败: {e}", fg="red"))
-            self.stop_agent()
+            self.root.after(0, lambda: self.status_label.configure(text=f"连接失败: {e}", text_color="#EF4444"))
+            self.root.after(0, self.stop_agent)
             return
 
         last_state = None
@@ -157,7 +184,6 @@ class AgentApp:
             idle_time = get_idle_time()
             app_name, win_title = get_active_window_info()
             
-            # 空闲时间大于 5 分钟 (300秒) 算作 AFK
             if idle_time > 300: 
                 current_status = "afk"
             else:
@@ -181,6 +207,7 @@ class AgentApp:
             time.sleep(interval)
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    # 使用 CTk 而不是 tk.Tk()
+    root = ctk.CTk()
     app = AgentApp(root)
     root.mainloop()
